@@ -4,7 +4,8 @@ export lambda_=0.80
 export lr=2e-5
 
 #final GeDi LM checkpoint saved at --output_dir
-python ../train_GeDi.py --task_name SST-2 \
+#python ../train_GeDi.py --task_name SST-2 \
+CUDA_VISIBLE_DEVICES=4 python ../train_GeDi.py --task_name SST-2 \
   --overwrite_output_dir \
   --do_eval  \
   --do_train \
