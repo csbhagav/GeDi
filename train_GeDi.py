@@ -32,7 +32,6 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 import sys
 
-
 from modeling_gpt2 import GPT2LMHeadModel
 
 from transformers import (
@@ -65,11 +64,16 @@ from transformers import (
     get_linear_schedule_with_warmup,
     GPT2Config,
     GPT2Tokenizer,
+    #GPT2LMHeadModel,
 )
+
 from transformers import glue_compute_metrics as compute_metrics
 from transformers import glue_convert_examples_to_features as convert_examples_to_features
+#from transformers.data.processors.glue import glue_convert_examples_to_features as convert_examples_to_features
 from transformers import glue_output_modes as output_modes
 from transformers import glue_processors as processors
+
+from transformers import BERT_PRETRAINED_CONFIG_ARCHIVE_MAP
 
 # https://github.com/huggingface/transformers/blob/master/src/transformers/data/metrics/__init__.py
 def acc_and_f1(preds, labels):
@@ -93,23 +97,23 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-ALL_MODELS = sum(
-    (
-        tuple(conf.pretrained_config_archive_map.keys())
-        for conf in (
-            BertConfig,
-            XLNetConfig,
-            XLMConfig,
-            RobertaConfig,
-            DistilBertConfig,
-            AlbertConfig,
-            XLMRobertaConfig,
-            FlaubertConfig,
-            GPT2Config
-        )
-    ),
-    (),
-)
+#ALL_MODELS = sum(
+#    (
+#        tuple(conf.pretrained_config_archive_map.keys())
+#        for conf in (
+#            BertConfig,
+#            XLNetConfig,
+#            XLMConfig,
+#            RobertaConfig,
+#            DistilBertConfig,
+#            AlbertConfig,
+#            XLMRobertaConfig,
+#            FlaubertConfig,
+#            GPT2Config
+#        )
+#    ),
+#    (),
+#)
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
@@ -188,13 +192,13 @@ def train(args, train_dataset, model, tokenizer):
         optimizer.load_state_dict(torch.load(os.path.join(args.model_name_or_path, "optimizer.pt")))
         scheduler.load_state_dict(torch.load(os.path.join(args.model_name_or_path, "scheduler.pt")))
 
-    if args.fp16:
-        try:
-            from apex import amp
-        except ImportError:
-            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-        torch.cuda.empty_cache()
+    #if args.fp16:
+    #    try:
+    #        from apex import amp
+    #    except ImportError:
+    #        raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+    #    model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
+    #    torch.cuda.empty_cache()
 
     # multi-gpu training (should be after apex fp16 initialization)
     if args.n_gpu > 1:
@@ -352,8 +356,12 @@ def train(args, train_dataset, model, tokenizer):
             else:
                 loss_a,loss_b=torch.split(losses, bsz, dim=0)
 
-                loss_a*=loss_mask
-                loss_b*=loss_mask
+                #loss_a*=loss_mask
+                #loss_b*=loss_mask
+                loss_a = loss_a * loss_mask
+                loss_b = loss_b * loss_mask
+
+
                 if False:
                     gen_loss_a = (batch[3]==0).to(torch.float16).unsqueeze(1)*loss_a/loss_lengths
                     gen_loss_b = (batch[3]==1).to(torch.float16).unsqueeze(1)*loss_b/loss_lengths
@@ -382,29 +390,29 @@ def train(args, train_dataset, model, tokenizer):
                 batch[3][batch[3] == 2] = 1  #turning 3-ary to binary
             class_labels = batch[3]
 
-            if args.logit_scale:
-                if args.fp16:
-                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                        class_logits*=model.logit_scale.float()
-                    else:
-                        class_logits*=model.module.logit_scale.float()
-                else:
-                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                        class_logits*=model.logit_scale
-                    else:
-                        class_logits*=model.module.logit_scale
+            #if args.logit_scale:
+            #    if args.fp16:
+            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+            #            class_logits*=model.logit_scale.float()
+            #        else:
+            #            class_logits*=model.module.logit_scale.float()
+            #    else:
+            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+            #            class_logits*=model.logit_scale
+            #        else:
+            #            class_logits*=model.module.logit_scale
 
-            if args.outbias:
-                if args.fp16:
-                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                        class_logits+=model.bias.float()
-                    else:
-                        class_logits+= model.module.bias.float()
-                else:
-                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                        class_logits+=model.bias
-                    else:
-                        class_logits+=model.module.bias
+            #if args.outbias:
+            #    if args.fp16:
+            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+            #            class_logits+=model.bias.float()
+            #        else:
+            #            class_logits+= model.module.bias.float()
+            #    else:
+            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+            #            class_logits+=model.bias
+            #        else:
+            #            class_logits+=model.module.bias
 
 
             loss_fn = torch.nn.CrossEntropyLoss()
@@ -419,19 +427,21 @@ def train(args, train_dataset, model, tokenizer):
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
 
-            if args.fp16:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                loss.backward()
+            #if args.fp16:
+            #    with amp.scale_loss(loss, optimizer) as scaled_loss:
+            #        scaled_loss.backward()
+            #else:
+            #    loss.backward()
+            loss.backward()
 
             tr_loss += loss.item()
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                if args.fp16:
-                    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-                else:
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                #if args.fp16:
+                #    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
+                #else:
+                #    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
                 optimizer.step()
                 scheduler.step()  # Update learning rate schedule
@@ -638,23 +648,23 @@ def evaluate(args, model, tokenizer, prefix=""):
 
                 loss_fn = torch.nn.CrossEntropyLoss()
 
-                if args.logit_scale:
-                    if args.fp16:
-                        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                            class_logits*=model.logit_scale.float()
-                        else:
-                            class_logits*=model.module.logit_scale.float()
-                    else:
-                        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                            class_logits*=model.logit_scale
-                        else:
-                            class_logits*=model.module.logit_scale.float()
+                #if args.logit_scale:
+                #    if args.fp16:
+                #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                #            class_logits*=model.logit_scale.float()
+                #        else:
+                #            class_logits*=model.module.logit_scale.float()
+                #    else:
+                #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                #            class_logits*=model.logit_scale
+                #        else:
+                #            class_logits*=model.module.logit_scale.float()
 
-                if args.outbias:
-                    if args.fp16:
-                        class_logits+=model.bias.float()
-                    else:
-                        class_logits+=model.bias
+                #if args.outbias:
+                #    if args.fp16:
+                #        class_logits+=model.bias.float()
+                #    else:
+                #        class_logits+=model.bias
 
 
                 loss = loss_fn(class_logits, class_labels)
@@ -749,9 +759,9 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             label_list=label_list,
             max_length=args.max_seq_length,
             output_mode=output_mode,
-            pad_on_left=bool(args.model_type in ["xlnet"]),  # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
+            #pad_on_left=bool(args.model_type in ["xlnet"]),  # pad on the left for xlnet
+            #pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
+            #pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         )
         if args.local_rank in [-1, 0]:
             logger.info("Saving features into cached file %s", cached_features_file)
@@ -763,7 +773,8 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
-    all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    #all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    all_token_type_ids = torch.tensor([0 for f in features], dtype=torch.long)
     if output_mode == "classification":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
@@ -796,7 +807,8 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
+        #help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
+        help="Path to pretrained model or model identifier from huggingface.co/models",
     )
     parser.add_argument(
         "--task_name",
@@ -901,18 +913,18 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
 
-    parser.add_argument(
-        "--fp16",
-        action="store_true",
-        help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit",
-    )
-    parser.add_argument(
-        "--fp16_opt_level",
-        type=str,
-        default="O1",
-        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
-        "See details at https://nvidia.github.io/apex/amp.html",
-    )
+    #parser.add_argument(
+    #    "--fp16",
+    #    action="store_true",
+    #    help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit",
+    #)
+    #parser.add_argument(
+    #    "--fp16_opt_level",
+    #    type=str,
+    #    default="O1",
+    #    help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+    #    "See details at https://nvidia.github.io/apex/amp.html",
+    #)
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
@@ -969,12 +981,13 @@ def main():
         level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
     )
     logger.warning(
-        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+        #"Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s",
         args.local_rank,
         device,
         args.n_gpu,
         bool(args.local_rank != -1),
-        args.fp16,
+        #args.fp16,
     )
 
     # Set seed
@@ -1041,6 +1054,10 @@ def main():
 
     model.to(args.device)
 
+
+    tokenizer.padding_side = "left"
+    tokenizer.pad_token = tokenizer.eos_token
+    model.config.pad_token_id = model.config.eos_token_id
 
 
 
