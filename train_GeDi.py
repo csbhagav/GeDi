@@ -577,10 +577,7 @@ def evaluate(args, model, tokenizer, prefix=""):
                     loss_mask = batch[1][:,:-1].to(torch.float32).cuda()
                     #appending with ones to account for the control code token being added
                     left_ = torch.ones(loss_mask.shape[0],1).type_as(loss_mask)
-                    #TODO: error below
-                    # indexSelectLargeIndex: block: [19,0,0], thread: [0,0,0] Assertion `srcIndex < srcSelectDimSize` failed
                     loss_mask = torch.cat((left_, loss_mask[:,:-1]), dim=1)
-
 
 
                 loss_lengths = torch.sum(loss_mask,1,keepdim=True)
@@ -1110,7 +1107,13 @@ def main():
             prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
 
             model = model_class.from_pretrained(checkpoint)
+            model.resize_token_embeddings(len(tokenizer))
             model.to(args.device)
+
+            tokenizer.padding_side = "left"
+            tokenizer.pad_token = tokenizer.eos_token
+            model.config.pad_token_id = model.config.eos_token_id
+
             result = evaluate(args, model, tokenizer, prefix=prefix)
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
             results.update(result)
