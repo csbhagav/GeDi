@@ -962,6 +962,15 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
 
+        try:
+            if config.nbias>0:
+                self.bias = nn.Parameter(torch.zeros((1,config.nbias)))
+            if config.logit_scale:
+                self.logit_scale = nn.Parameter(torch.ones((1,1)))
+        except:
+            print("no logit scale initialized for gpt2")
+
+
     @add_start_docstrings(PARALLELIZE_DOCSTRING)
     def parallelize(self, device_map=None):
         self.device_map = (
