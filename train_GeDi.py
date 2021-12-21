@@ -192,13 +192,13 @@ def train(args, train_dataset, model, tokenizer):
         optimizer.load_state_dict(torch.load(os.path.join(args.model_name_or_path, "optimizer.pt")))
         scheduler.load_state_dict(torch.load(os.path.join(args.model_name_or_path, "scheduler.pt")))
 
-    #if args.fp16:
-    #    try:
-    #        from apex import amp
-    #    except ImportError:
-    #        raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-    #    model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
-    #    torch.cuda.empty_cache()
+    if args.fp16:
+        try:
+            from apex import amp
+        except ImportError:
+            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
+        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
+        torch.cuda.empty_cache()
 
     # multi-gpu training (should be after apex fp16 initialization)
     if args.n_gpu > 1:
@@ -390,29 +390,29 @@ def train(args, train_dataset, model, tokenizer):
                 batch[3][batch[3] == 2] = 1  #turning 3-ary to binary
             class_labels = batch[3]
 
-            #if args.logit_scale:
-            #    if args.fp16:
-            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-            #            class_logits*=model.logit_scale.float()
-            #        else:
-            #            class_logits*=model.module.logit_scale.float()
-            #    else:
-            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-            #            class_logits*=model.logit_scale
-            #        else:
-            #            class_logits*=model.module.logit_scale
+            if args.logit_scale:
+                if args.fp16:
+                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                        class_logits*=model.logit_scale.float()
+                    else:
+                        class_logits*=model.module.logit_scale.float()
+                else:
+                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                        class_logits*=model.logit_scale
+                    else:
+                        class_logits*=model.module.logit_scale
 
-            #if args.outbias:
-            #    if args.fp16:
-            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-            #            class_logits+=model.bias.float()
-            #        else:
-            #            class_logits+= model.module.bias.float()
-            #    else:
-            #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-            #            class_logits+=model.bias
-            #        else:
-            #            class_logits+=model.module.bias
+            if args.outbias:
+                if args.fp16:
+                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                        class_logits+=model.bias.float()
+                    else:
+                        class_logits+= model.module.bias.float()
+                else:
+                    if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                        class_logits+=model.bias
+                    else:
+                        class_logits+=model.module.bias
 
 
             loss_fn = torch.nn.CrossEntropyLoss()
@@ -427,21 +427,19 @@ def train(args, train_dataset, model, tokenizer):
             if args.gradient_accumulation_steps > 1:
                 loss = loss / args.gradient_accumulation_steps
 
-            #if args.fp16:
-            #    with amp.scale_loss(loss, optimizer) as scaled_loss:
-            #        scaled_loss.backward()
-            #else:
-            #    loss.backward()
-            loss.backward()
+            if args.fp16:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
 
             tr_loss += loss.item()
 
             if (step + 1) % args.gradient_accumulation_steps == 0:
-                #if args.fp16:
-                #    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-                #else:
-                #    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                if args.fp16:
+                    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
+                else:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
                 optimizer.step()
                 scheduler.step()  # Update learning rate schedule
@@ -647,23 +645,23 @@ def evaluate(args, model, tokenizer, prefix=""):
 
                 loss_fn = torch.nn.CrossEntropyLoss()
 
-                #if args.logit_scale:
-                #    if args.fp16:
-                #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                #            class_logits*=model.logit_scale.float()
-                #        else:
-                #            class_logits*=model.module.logit_scale.float()
-                #    else:
-                #        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
-                #            class_logits*=model.logit_scale
-                #        else:
-                #            class_logits*=model.module.logit_scale.float()
+                if args.logit_scale:
+                    if args.fp16:
+                        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                            class_logits*=model.logit_scale.float()
+                        else:
+                            class_logits*=model.module.logit_scale.float()
+                    else:
+                        if not isinstance(model,torch.nn.DataParallel) and not isinstance(model,torch.nn.parallel.DistributedDataParallel):
+                            class_logits*=model.logit_scale
+                        else:
+                            class_logits*=model.module.logit_scale.float()
 
-                #if args.outbias:
-                #    if args.fp16:
-                #        class_logits+=model.bias.float()
-                #    else:
-                #        class_logits+=model.bias
+                if args.outbias:
+                    if args.fp16:
+                        class_logits+=model.bias.float()
+                    else:
+                        class_logits+=model.bias
 
 
                 loss = loss_fn(class_logits, class_labels)
@@ -912,18 +910,18 @@ def main():
     )
     parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
 
-    #parser.add_argument(
-    #    "--fp16",
-    #    action="store_true",
-    #    help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit",
-    #)
-    #parser.add_argument(
-    #    "--fp16_opt_level",
-    #    type=str,
-    #    default="O1",
-    #    help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
-    #    "See details at https://nvidia.github.io/apex/amp.html",
-    #)
+    parser.add_argument(
+        "--fp16",
+        action="store_true",
+        help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit",
+    )
+    parser.add_argument(
+        "--fp16_opt_level",
+        type=str,
+        default="O1",
+        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
+        "See details at https://nvidia.github.io/apex/amp.html",
+    )
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
@@ -980,13 +978,13 @@ def main():
         level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN,
     )
     logger.warning(
-        #"Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
-        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s",
+        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+        #"Process rank: %s, device: %s, n_gpu: %s, distributed training: %s",
         args.local_rank,
         device,
         args.n_gpu,
         bool(args.local_rank != -1),
-        #args.fp16,
+        args.fp16,
     )
 
     # Set seed
