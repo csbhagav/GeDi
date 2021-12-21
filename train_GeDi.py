@@ -577,6 +577,8 @@ def evaluate(args, model, tokenizer, prefix=""):
                     loss_mask = batch[1][:,:-1].to(torch.float32).cuda()
                     #appending with ones to account for the control code token being added
                     left_ = torch.ones(loss_mask.shape[0],1).type_as(loss_mask)
+                    #TODO: error below
+                    # indexSelectLargeIndex: block: [19,0,0], thread: [0,0,0] Assertion `srcIndex < srcSelectDimSize` failed
                     loss_mask = torch.cat((left_, loss_mask[:,:-1]), dim=1)
 
 
