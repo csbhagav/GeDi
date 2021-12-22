@@ -51,7 +51,7 @@ from transformers.modeling_outputs import (
     SequenceClassifierOutputWithPast,
     TokenClassifierOutput,
 )
-#TODO: modeling_utils should be used locally... (should be addressed)
+
 #from transformers.modeling_utils import (
 #from ...modeling_utils import (
 #from modeling_utils import (
