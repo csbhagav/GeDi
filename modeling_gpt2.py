@@ -51,14 +51,17 @@ from transformers.modeling_outputs import (
     SequenceClassifierOutputWithPast,
     TokenClassifierOutput,
 )
+#TODO: modeling_utils should be used locally... (should be addressed)
+#from transformers.modeling_utils import (
 #from ...modeling_utils import (
-from transformers.modeling_utils import (
-    Conv1D,
-    PreTrainedModel,
-    SequenceSummary,
-    find_pruneable_heads_and_indices,
-    prune_conv1d_layer,
-)
+#from modeling_utils import (
+#    Conv1D,
+#    PreTrainedModel,
+#    SequenceSummary,
+#    find_pruneable_heads_and_indices,
+#    prune_conv1d_layer,
+#)
+from modeling_utils import Conv1D, PreTrainedModel, SequenceSummary, prune_conv1d_layer
 #from ...utils import logging
 from transformers.utils import logging
 #from ...utils.model_parallel_utils import assert_device_map, get_device_map
