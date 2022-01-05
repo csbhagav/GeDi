@@ -1,0 +1,4 @@
+tensorboard==2.4.1
+sklearn
+transformers==4.14.1
+torch==1.9.0+cu111

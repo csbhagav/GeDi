@@ -1,6 +1,7 @@
 
 
-python ../generate_GeDi.py \
+#python ../generate_GeDi.py \
+CUDA_VISIBLE_DEVICES=4 python ../generate_GeDi.py \
  --gen_length 200 \
  --model_type gpt2 \
  --gen_model_name_or_path gpt2-xl \

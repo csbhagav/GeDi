@@ -32,7 +32,6 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 import sys
 
-
 from modeling_gpt2 import GPT2LMHeadModel
 
 from transformers import (
@@ -65,11 +64,16 @@ from transformers import (
     get_linear_schedule_with_warmup,
     GPT2Config,
     GPT2Tokenizer,
+    #GPT2LMHeadModel,
 )
+
 from transformers import glue_compute_metrics as compute_metrics
 from transformers import glue_convert_examples_to_features as convert_examples_to_features
+#from transformers.data.processors.glue import glue_convert_examples_to_features as convert_examples_to_features
 from transformers import glue_output_modes as output_modes
 from transformers import glue_processors as processors
+
+from transformers import BERT_PRETRAINED_CONFIG_ARCHIVE_MAP
 
 # https://github.com/huggingface/transformers/blob/master/src/transformers/data/metrics/__init__.py
 def acc_and_f1(preds, labels):
@@ -93,23 +97,23 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-ALL_MODELS = sum(
-    (
-        tuple(conf.pretrained_config_archive_map.keys())
-        for conf in (
-            BertConfig,
-            XLNetConfig,
-            XLMConfig,
-            RobertaConfig,
-            DistilBertConfig,
-            AlbertConfig,
-            XLMRobertaConfig,
-            FlaubertConfig,
-            GPT2Config
-        )
-    ),
-    (),
-)
+#ALL_MODELS = sum(
+#    (
+#        tuple(conf.pretrained_config_archive_map.keys())
+#        for conf in (
+#            BertConfig,
+#            XLNetConfig,
+#            XLMConfig,
+#            RobertaConfig,
+#            DistilBertConfig,
+#            AlbertConfig,
+#            XLMRobertaConfig,
+#            FlaubertConfig,
+#            GPT2Config
+#        )
+#    ),
+#    (),
+#)
 
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
@@ -352,8 +356,12 @@ def train(args, train_dataset, model, tokenizer):
             else:
                 loss_a,loss_b=torch.split(losses, bsz, dim=0)
 
-                loss_a*=loss_mask
-                loss_b*=loss_mask
+                #loss_a*=loss_mask
+                #loss_b*=loss_mask
+                loss_a = loss_a * loss_mask
+                loss_b = loss_b * loss_mask
+
+
                 if False:
                     gen_loss_a = (batch[3]==0).to(torch.float16).unsqueeze(1)*loss_a/loss_lengths
                     gen_loss_b = (batch[3]==1).to(torch.float16).unsqueeze(1)*loss_b/loss_lengths
@@ -570,7 +578,6 @@ def evaluate(args, model, tokenizer, prefix=""):
                     loss_mask = torch.cat((left_, loss_mask[:,:-1]), dim=1)
 
 
-
                 loss_lengths = torch.sum(loss_mask,1,keepdim=True)
 
                 if args.threeway:
@@ -749,9 +756,9 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             label_list=label_list,
             max_length=args.max_seq_length,
             output_mode=output_mode,
-            pad_on_left=bool(args.model_type in ["xlnet"]),  # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
+            #pad_on_left=bool(args.model_type in ["xlnet"]),  # pad on the left for xlnet
+            #pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
+            #pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
         )
         if args.local_rank in [-1, 0]:
             logger.info("Saving features into cached file %s", cached_features_file)
@@ -763,7 +770,8 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
-    all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    #all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    all_token_type_ids = torch.tensor([0 for f in features], dtype=torch.long)
     if output_mode == "classification":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
@@ -796,7 +804,8 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
+        #help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
+        help="Path to pretrained model or model identifier from huggingface.co/models",
     )
     parser.add_argument(
         "--task_name",
@@ -970,6 +979,7 @@ def main():
     )
     logger.warning(
         "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
+        #"Process rank: %s, device: %s, n_gpu: %s, distributed training: %s",
         args.local_rank,
         device,
         args.n_gpu,
@@ -1042,6 +1052,10 @@ def main():
     model.to(args.device)
 
 
+    tokenizer.padding_side = "left"
+    tokenizer.pad_token = tokenizer.eos_token
+    model.config.pad_token_id = model.config.eos_token_id
+
 
 
     logger.info("Training/evaluation parameters %s", args)
@@ -1091,7 +1105,13 @@ def main():
             prefix = checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
 
             model = model_class.from_pretrained(checkpoint)
+            model.resize_token_embeddings(len(tokenizer))
             model.to(args.device)
+
+            tokenizer.padding_side = "left"
+            tokenizer.pad_token = tokenizer.eos_token
+            model.config.pad_token_id = model.config.eos_token_id
+
             result = evaluate(args, model, tokenizer, prefix=prefix)
             result = dict((k + "_{}".format(global_step), v) for k, v in result.items())
             results.update(result)
