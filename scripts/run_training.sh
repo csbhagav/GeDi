@@ -24,8 +24,7 @@ CUDA_VISIBLE_DEVICES=4 python ../train_GeDi.py --task_name SST-2 \
   --save_steps 5000000000 \
   --code_0 false \
   --code_1 true \
-  --logit_scale \
-  --fp16
+  --logit_scale
 
 
 ### no apex

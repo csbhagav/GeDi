@@ -61,13 +61,14 @@ from transformers.modeling_outputs import (
 #    find_pruneable_heads_and_indices,
 #    prune_conv1d_layer,
 #)
-from modeling_utils import Conv1D, PreTrainedModel, SequenceSummary, prune_conv1d_layer
+from modeling_utils import Conv1D, PreTrainedModel, SequenceSummary, prune_conv1d_layer, \
+    find_pruneable_heads_and_indices
 #from ...utils import logging
 from transformers.utils import logging
 #from ...utils.model_parallel_utils import assert_device_map, get_device_map
 from transformers.utils.model_parallel_utils import assert_device_map, get_device_map
 from configuration_gpt2 import GPT2Config
-
+from transformers.
 
 logger = logging.get_logger(__name__)
 
