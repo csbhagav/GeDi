@@ -9,7 +9,7 @@ CUDA_VISIBLE_DEVICES=4 python ../train_GeDi.py --task_name SST-2 \
   --overwrite_output_dir \
   --do_eval  \
   --do_train \
-  --data_dir ../data/AG-news_small  \
+  --data_dir ../data/AG-news  \
   --max_seq_length 192 \
   --overwrite_cache \
   --per_gpu_train_batch_size 4 \
