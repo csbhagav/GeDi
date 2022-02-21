@@ -22,9 +22,9 @@ import torch
 import torch.distributed as dist
 from torch import nn
 
-from .file_utils import ModelOutput
-from .generation_beam_search import BeamScorer, BeamSearchScorer
-from .generation_logits_process import (
+from transformers.file_utils import ModelOutput
+from transformers.generation_beam_search import BeamScorer, BeamSearchScorer
+from transformers.generation_logits_process import (
     EncoderNoRepeatNGramLogitsProcessor,
     ForcedBOSTokenLogitsProcessor,
     ForcedEOSTokenLogitsProcessor,
@@ -40,13 +40,40 @@ from .generation_logits_process import (
     TopKLogitsWarper,
     TopPLogitsWarper,
 )
-from .generation_stopping_criteria import (
+from transformers.generation_stopping_criteria import (
     MaxLengthCriteria,
     MaxTimeCriteria,
     StoppingCriteriaList,
     validate_stopping_criteria,
 )
-from .utils import logging
+from transformers.utils import logging
+
+
+#from .file_utils import ModelOutput
+#from .generation_beam_search import BeamScorer, BeamSearchScorer
+#from .generation_logits_process import (
+#    EncoderNoRepeatNGramLogitsProcessor,
+#    ForcedBOSTokenLogitsProcessor,
+#    ForcedEOSTokenLogitsProcessor,
+#    HammingDiversityLogitsProcessor,
+#    InfNanRemoveLogitsProcessor,
+#    LogitsProcessorList,
+#    MinLengthLogitsProcessor,
+#    NoBadWordsLogitsProcessor,
+#    NoRepeatNGramLogitsProcessor,
+#    PrefixConstrainedLogitsProcessor,
+#    RepetitionPenaltyLogitsProcessor,
+#    TemperatureLogitsWarper,
+#    TopKLogitsWarper,
+#    TopPLogitsWarper,
+#)
+#from .generation_stopping_criteria import (
+#    MaxLengthCriteria,
+#    MaxTimeCriteria,
+#    StoppingCriteriaList,
+#    validate_stopping_criteria,
+#)
+#from .utils import logging
 
 
 logger = logging.get_logger(__name__)

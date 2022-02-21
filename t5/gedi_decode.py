@@ -4,9 +4,11 @@ import json
 import torch
 from tqdm import tqdm
 
-from transformers import T5Tokenizer, T5ForConditionalGeneration
-from transformers import LogitsProcessorList, MinLengthLogitsProcessor
-from torch import nn, argmax, multinomial
+from modeling_t5 import T5ForConditionalGeneration
+from transformers import T5Tokenizer
+#from transformers import T5Tokenizer, T5ForConditionalGeneration
+#from transformers import LogitsProcessorList, MinLengthLogitsProcessor
+#from torch import nn, argmax, multinomial
 from GeDi_t5 import GeDi
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -53,10 +55,12 @@ sp="dev"
 
 f_in_path = f"./human_eval/{dataset}_{sp}.json"
 if gedi_params["gedi_lambda"] == 0.0:
-    f_out = open(f"./human_eval/pred_{dataset}_{sp}_no_gedi.txt", 'w')
+    #f_out = open(f"./human_eval/pred_{dataset}_{sp}_no_gedi.txt", 'w')
+    f_out = open(f"./tmp/pred_{dataset}_{sp}_no_gedi.txt", 'w')
 else:
     g = gedi_params["gedi_lambda"]
-    f_out = open(f"./human_eval/pred_{dataset}_{sp}_{g}.txt", 'w')
+    #f_out = open(f"./human_eval/pred_{dataset}_{sp}_{g}.txt", 'w')
+    f_out = open(f"./tmp/pred_{dataset}_{sp}_{g}.txt", 'w')
 
 num_lines = sum(1 for line in open(f_in_path, 'r'))
 for row in tqdm(open(f_in_path, 'r'), total=num_lines, mininterval=1):
