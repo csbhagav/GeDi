@@ -24,7 +24,7 @@ def gedi_decode(model, tokenizer, gedi, gedi_params, input_text):
 gedi_params = {}
 gedi_params["ignore_first_t"] = 3
 gedi_params["top_beam"] = 16
-gedi_params["gedi_lambda"] = 0.8
+gedi_params["gedi_lambda"] = 0.0
 gedi_params["verbose"] = False
 
 t5_model_size = "t5-large"
@@ -48,9 +48,16 @@ if device == "cuda":
 ### main ###
 dataset="moralstories"
 dataset="rocstories"
+sp="dev"
+#sp="test"
 
-f_in_path = f"./human_eval/{dataset}_test.json"
-f_out = open(f"./human_eval/pred_{dataset}_test.txt", 'w')
+f_in_path = f"./human_eval/{dataset}_{sp}.json"
+if gedi_params["gedi_lambda"] == 0.0:
+    f_out = open(f"./human_eval/pred_{dataset}_{sp}_no_gedi.txt", 'w')
+else:
+    g = gedi_params["gedi_lambda"]
+    f_out = open(f"./human_eval/pred_{dataset}_{sp}_{g}.txt", 'w')
+
 num_lines = sum(1 for line in open(f_in_path, 'r'))
 for row in tqdm(open(f_in_path, 'r'), total=num_lines, mininterval=1):
     row = json.loads(row)
