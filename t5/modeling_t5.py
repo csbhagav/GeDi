@@ -47,27 +47,6 @@ from transformers.utils.model_parallel_utils import assert_device_map, get_devic
 from configuration_t5 import T5Config
 
 
-#from ...activations import ACT2FN
-#from ...file_utils import (
-#    DUMMY_INPUTS,
-#    DUMMY_MASK,
-#    add_start_docstrings,
-#    add_start_docstrings_to_model_forward,
-#    is_torch_fx_proxy,
-#    replace_return_docstrings,
-#)
-#from ...modeling_outputs import (
-#    BaseModelOutput,
-#    BaseModelOutputWithPastAndCrossAttentions,
-#    Seq2SeqLMOutput,
-#    Seq2SeqModelOutput,
-#)
-#from ...modeling_utils import PreTrainedModel, find_pruneable_heads_and_indices, prune_linear_layer
-#from ...utils import logging
-#from ...utils.model_parallel_utils import assert_device_map, get_device_map
-#from .configuration_t5 import T5Config
-
-
 logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "T5Config"

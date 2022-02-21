@@ -50,29 +50,6 @@ from transformers.utils import logging
 from transformers.utils.versions import require_version_core
 
 
-#from .activations import get_activation
-#from .configuration_utils import PretrainedConfig
-#from .deepspeed import deepspeed_config, is_deepspeed_zero3_enabled
-#from .file_utils import (
-#    DUMMY_INPUTS,
-#    FLAX_WEIGHTS_NAME,
-#    TF2_WEIGHTS_NAME,
-#    TF_WEIGHTS_NAME,
-#    WEIGHTS_NAME,
-#    ModelOutput,
-#    PushToHubMixin,
-#    cached_path,
-#    copy_func,
-#    hf_bucket_url,
-#    is_offline_mode,
-#    is_remote_url,
-#    replace_return_docstrings,
-#)
-#from .generation_utils import GenerationMixin
-#from .utils import logging
-#from .utils.versions import require_version_core
-
-
 logger = logging.get_logger(__name__)
 
 

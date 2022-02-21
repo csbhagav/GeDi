@@ -49,42 +49,7 @@ from transformers.generation_stopping_criteria import (
 from transformers.utils import logging
 
 
-#from .file_utils import ModelOutput
-#from .generation_beam_search import BeamScorer, BeamSearchScorer
-#from .generation_logits_process import (
-#    EncoderNoRepeatNGramLogitsProcessor,
-#    ForcedBOSTokenLogitsProcessor,
-#    ForcedEOSTokenLogitsProcessor,
-#    HammingDiversityLogitsProcessor,
-#    InfNanRemoveLogitsProcessor,
-#    LogitsProcessorList,
-#    MinLengthLogitsProcessor,
-#    NoBadWordsLogitsProcessor,
-#    NoRepeatNGramLogitsProcessor,
-#    PrefixConstrainedLogitsProcessor,
-#    RepetitionPenaltyLogitsProcessor,
-#    TemperatureLogitsWarper,
-#    TopKLogitsWarper,
-#    TopPLogitsWarper,
-#)
-#from .generation_stopping_criteria import (
-#    MaxLengthCriteria,
-#    MaxTimeCriteria,
-#    StoppingCriteriaList,
-#    validate_stopping_criteria,
-#)
-#from .utils import logging
-
-
 logger = logging.get_logger(__name__)
-
-#####
-# added by keisuke
-#from transformers import T5Tokenizer
-#tokenizer = T5Tokenizer.from_pretrained("t5-large")
-
-#TODO: load classifier 
-#####
 
 @dataclass
 class GreedySearchDecoderOnlyOutput(ModelOutput):
@@ -1394,17 +1359,7 @@ class GenerationMixin:
             # pre-process distribution
             next_tokens_scores = logits_processor(input_ids, next_token_logits)
 
-            ### TODO: tweaking
-            #print(next_tokens_scores)
-            #print(next_tokens_scores.shape)
-            #random_values = torch.rand(32128)*100.
-            #print(random_values.shape)
-            #next_tokens_scores = next_tokens_scores + random_values
-            # argmax
-
-            ### keisuke 
-            #print("hi I'm greedy")
-            # top-k
+            ### Decoding with GeDi
             if gedi_decoder is not None:
                 if step_idx > ignore_first_t:
                     next_candidates = torch.topk(next_tokens_scores, top_beam)
@@ -1413,81 +1368,25 @@ class GenerationMixin:
                         print(tokenizer.decode(input_ids[0], skip_special_tokens=True))
                     next_token_logits_with_gedi[0] = (1.- gedi_lambda) * next_token_logits_with_gedi[0]
 
-                    #print(tokenizer.decode(next_candidates.indices[0], skip_special_tokens=True))
-                    #print(tokenizer.decode(next_candidates.indices[0][0], skip_special_tokens=False))
-                    #print(input_ids[0])
-                    #print(input_ids[0].shape)
-                    #print(next_candidates.indices[0].shape)
-                    #print(next_candidates.indices[0][0])
-                    #print(type(next_candidates.indices[0][0,None]))
-                    #print(torch.cat((input_ids[0][1:], next_candidates.indices[0][0,None]))) # ignore <pad> in the beginning of the input_ids
-
                     candidates_with_context = [torch.cat((input_ids[0][1:], next_candidates.indices[0][j,None])) for j in range(top_beam)]
-
-
-                    ### TODO: batchify the loss_p and loss_n --> this seems hard due to the meaned loss in default (no reduction)
-                    #print("check")
-                    ##candidates_batch = tokenizer(candidates_with_context, return_tensors="pt").input_ids
-                    #labels = tokenizer(['p' for _ in range(top_beam)], return_tensors="pt").input_ids
-                    #print(labels.shape)
-                    ##candidates_with_context = torch.Tensor(candidates_with_context).reshape([top_beam, step_idx])
-                    #candidates_with_context = torch.stack(candidates_with_context)
-                    ##.reshape([top_beam, step_idx])
-                    #print(candidates_with_context.shape)
-                    #loss_p = gedi_decoder.get_loss(candidates_with_context, labels)
-                    #print(loss_p)
-                    #exit()
-                    
-                    
 
                     for candidate, cand_idx in zip(candidates_with_context, next_candidates.indices[0]):
                         if verbose:
                             print("\n##### candidates #####")
                             print(tokenizer.decode(candidate))
-                        #print(cand_idx)
-                        #print(next_token_logits.shape)
-                        #print(next_token_logits_with_gedi[0][cand_idx])
                         cand = candidate.reshape(1, len(candidate))
 
-                        #TODO:
-                        #if "cuda" in gedi_decoder.model.device == "cuda":
-                        #    cand = cand.to(device)
-
-                        #print(cand)
-                        #best_output, best_prob = gedi_decoder.predict_from_tokenized(cand)
-                        #print(best_output, best_prob)
-                        #raise
-                        #exit()
                         label = tokenizer("p", return_tensors="pt").input_ids
-                        #if "cuda" in gedi_decoder.model.device:
-                        #    print("p label to cuda!")
-                        #    label = label.to(device)
                         loss_p = gedi_decoder.get_loss(cand, label)
 
                         label = tokenizer("n", return_tensors="pt").input_ids
-                        #if "cuda" in gedi_decoder.model.device:
-                        #    print("n label to cuda!")
-                        #    label = label.to(device)
                         loss_n = gedi_decoder.get_loss(cand, label)
+
                         log_score = gedi_lambda * torch.log(loss_n / (loss_p + loss_n)) # note that bigger loss is lower prob
                         next_token_logits_with_gedi[0][cand_idx] += log_score
 
                     next_tokens_scores = logits_processor(input_ids, next_token_logits_with_gedi)
-                    #exit()
-                    #best_output, best_prob = gedi_decoder.predict_from_tokenized(candidates_with_context[0,None])
-                    #print(best_output)
-                    #print(best_prob)
-                    #candidates_with_context = [tokenizer.decode(torch.cat((input_ids[0][1:], next_candidates.indices[0][j,None])), skip_special_tokens=False) for j in range(top_beam)]
-                    #print(candidates_with_context)
-                    #exit()
-                    #next_candidates_tokens = [tokenizer.decode(next_candidates.indices[0][j], skip_special_tokens=True) for j in range(top_beam)]
-                    #print(next_candidates_tokens)
-                    #TODO: call gedi_decoder to score input_ids + next_candidates_tokens and rerank
-                    #print("done")
-                    #exit()
-                    # rerank tokens
-                    #print(next_candidates)
-                    #print(next_candidates.indices.shape)
+
             else:
                 pass
 

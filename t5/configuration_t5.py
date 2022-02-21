@@ -23,13 +23,6 @@ from transformers.configuration_utils import PretrainedConfig
 from transformers.onnx import OnnxConfigWithPast
 from transformers.utils import logging
 
-#from ... import is_torch_available
-#from ...configuration_utils import PretrainedConfig
-#from ...onnx import OnnxConfigWithPast
-#from ...utils import logging
-
-
-
 logger = logging.get_logger(__name__)
 
 T5_PRETRAINED_CONFIG_ARCHIVE_MAP = {
